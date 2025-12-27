@@ -1,0 +1,134 @@
+# ===================================================================
+#  PlayerTracker — Main Configuration File
+#  Created by QuaccOnCracc (2025)
+#  For support, visit the SpigotMC resources page
+# ===================================================================
+#
+#  Formatting:
+#     - Use & for color codes.
+#     - HEX colors (#RRGGBB) are supported.
+#     - Variables: {prefix}, {target}, {tracker}, {distance}, {amount}, {item}
+#
+# ===================================================================
+
+
+# ==============================================================
+#  ► Tracking Behaviour
+# ==============================================================
+
+# Right-clicking a compass automatically tracks the NEAREST player.
+track-nearest: true
+
+# Maximum distance (in blocks) a target can be from the tracker.
+tracking-distance: 10000
+
+
+# ==============================================================
+#  ► Compass Settings
+# ==============================================================
+
+compass:
+  # If true, player must HOLD the compass.
+  # If false, compass only needs to be somewhere in their inventory.
+  require-compass-hand: true
+
+  # Cooldown after clicking a compass (in seconds).
+  cooldown-seconds: 5
+
+  # Sent when clicking the compass while on cooldown.
+  cooldown-message: "&cYou must wait &f{time}s &cbefore searching again!"
+  # If true, compass target updates will be rate-limited by the cooldown below.
+  # Set to true to prevent constant compass target refresh; update-cooldown-seconds
+  # controls how often (in seconds) the compass target is updated.
+  update-cooldown-enabled: true
+  update-cooldown-seconds: 20
+
+
+# ==============================================================
+#  ► Tracking Fees
+# ==============================================================
+
+tracking-fee-item:
+  enabled: false
+  material: "DIAMOND"
+  amount: 1
+  item-taken-message: "&cRequired tracking fee of &f{amount} {item} &ctaken"
+
+tracking-fee-vault:
+  enabled: false
+  amount: 0
+  withdraw-fee-message: "&cWithdraw tracking fee of &f{amount} &cfrom your account!"
+
+# Whether the tracked player's name should be visible in the action bar tracking HUD
+tracking.show-target: false
+
+
+# ==============================================================
+#  ► Messages
+# ==============================================================
+
+# Global plugin prefix
+plugin-prefix: "&a&lTracker &8» "
+
+# No nearby players to track
+no-close-player: "&cNo nearby players found to track!"
+
+# Target left max distance
+outside-tracking-distance: "&f{target} &chas moved too far away to track!"
+
+# Missing required item
+insufficient-fee-item: "&cMissing required tracking fee: &f{amount} {item}"
+
+# Missing Vault currency
+insufficient-fee-vault: "&cYou need at least &f{amount}&c to track this player!"
+
+# Notify target of being tracked
+notify-target: "&cWARNING: You are being tracked by &f{tracker}"
+
+# Attempting to track yourself
+track-self: "&cYou cannot track yourself!"
+
+# Generic no-permission
+no-permission: "&cYou do not have permission to do that."
+
+# Config reload success
+reloaded-config-message: "&aConfiguration reloaded successfully!"
+
+# Actionbar tracking display (sent repeatedly)
+tracking-message: "&aTracking &e{target} &7| Distance: &b{distance}m &8(&f{time}s&8)"
+
+# No player supplied to /track
+player-not-specified: "&cPlease specify a player!"
+
+# Target not online
+player-not-online: "&cThat player is not online!"
+
+# Target is in another world
+not-in-world: "&f{target} &cis in another world — cannot track them!"
+
+# Target changed worlds while being tracked
+changed-world: "&cYour target changed worlds — tracking stopped!"
+
+# Used /track without having a compass
+no-compass: "&cYou need a compass to use &f/track&c!"
+
+# Player lost their compass while tracking
+tracking-stopped-no-compass: "&cCompass missing — tracking stopped!"
+
+# Compass must be held
+compass-not-in-hand: "&cYou must hold a compass to track!"
+
+# Player is not tracking anyone
+not-tracking-player: "&cYou are not currently tracking anyone."
+
+# Target cannot be tracked due to bypass permission
+tracker-bypass-message: "&cThis player cannot be tracked."
+
+# Tracking stopped by admin or server event
+forced-stop: "&cTracking of &f{target} &chas been forcefully stopped."
+
+# Player stopped tracking themselves (/cleartarget)
+self-stop: "&aYou have stopped tracking your target."
+
+# Target logged out
+target-left: "&cStopped tracking &f{target}&c — they left the server."

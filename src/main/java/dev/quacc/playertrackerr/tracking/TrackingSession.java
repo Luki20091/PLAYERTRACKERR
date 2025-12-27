@@ -1,0 +1,130 @@
+package dev.quacc.playertrackerr.tracking;
+
+import dev.quacc.playertrackerr.config.ConfigOption;
+import dev.quacc.playertrackerr.config.ConfigOptionsManager;
+import dev.quacc.playertrackerr.tracking.helper.CompassHelper;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.Map;
+import java.util.UUID;
+
+public class TrackingSession {
+
+    private final UUID trackerId;
+    private final UUID targetId;
+    private final ConfigOptionsManager config;
+    private final CompassHelper compassHelper;
+    private long lastCompassUpdate = 0L;
+
+    public TrackingSession(UUID trackerId, UUID targetId, ConfigOptionsManager config) {
+        this.trackerId = trackerId;
+        this.targetId = targetId;
+        this.config = config;
+        this.compassHelper = new CompassHelper(config);
+    }
+
+    public UUID getTrackerId() {
+        return this.trackerId;
+    }
+
+    public UUID getTargetId() {
+        return this.targetId;
+    }
+
+    public boolean validateAndUpdate(JavaPlugin plugin, Player tracker, Player target) {
+        if (!arePlayersOnlineAndNonNull(tracker, target)) return false;
+        if (!withinDistance(tracker, target)) return false;
+
+        return handleCompassState(tracker, target, plugin);
+    }
+
+
+
+    private boolean arePlayersOnlineAndNonNull(Player tracker, Player target) {
+        return tracker != null && target != null && tracker.isOnline() && target.isOnline();
+    }
+
+    private boolean withinDistance(Player tracker, Player target) {
+        final int max = config.getInt(ConfigOption.TRACKING_DISTANCE);
+        return tracker.getLocation().distanceSquared(target.getLocation()) <= (max * max);
+    }
+
+    private boolean handleCompassState(Player tracker, Player target, JavaPlugin plugin) {
+        return switch (compassHelper.validate(tracker)) {
+            case STOP -> {
+                tracker.spigot().sendMessage(
+                        new ComponentBuilder(
+                                config.format(ConfigOption.TRACKING_STOPPED_NO_COMPASS)
+                        ).create()
+                );
+                yield false;
+            }
+
+            case PAUSE -> {
+                yield true;
+            }
+
+            case UPDATE -> {
+                final boolean updated = shouldUpdateCompass();
+                if (updated) tracker.setCompassTarget(target.getLocation());
+                sendHUD(tracker, target, updated ? 0 : getRemainingSeconds());
+                yield true;
+            }
+        };
+    }
+
+    private int getRemainingSeconds() {
+        final boolean enabled = config.getBoolean(ConfigOption.COMPASS_UPDATE_COOLDOWN_ENABLED);
+        if (!enabled) return 0;
+
+        final int seconds = config.getInt(ConfigOption.COMPASS_UPDATE_COOLDOWN_SECONDS);
+        final long now = System.currentTimeMillis();
+        final long elapsed = now - lastCompassUpdate;
+        final long remainingMs = Math.max(0L, seconds * 1000L - elapsed);
+        return (int) ((remainingMs + 999L) / 1000L);
+    }
+
+    private boolean shouldUpdateCompass() {
+        final boolean enabled = config.getBoolean(ConfigOption.COMPASS_UPDATE_COOLDOWN_ENABLED);
+        if (!enabled) {
+            lastCompassUpdate = System.currentTimeMillis();
+            return true;
+        }
+
+        final int seconds = config.getInt(ConfigOption.COMPASS_UPDATE_COOLDOWN_SECONDS);
+        final long now = System.currentTimeMillis();
+        if (now - lastCompassUpdate >= seconds * 1000L) {
+            lastCompassUpdate = now;
+            return true;
+        }
+        return false;
+    }
+
+    public void updateCompassIfAllowed(Player tracker, Player target) {
+        if (shouldUpdateCompass()) {
+            tracker.setCompassTarget(target.getLocation());
+        }
+    }
+
+        private void sendHUD(Player tracker, Player target, int secondsUntilUpdate) {
+        final double distance = tracker.getLocation().distance(target.getLocation());
+
+        final String targetName = config.getBoolean(ConfigOption.TRACKING_SHOW_TARGET) ? target.getName() : "Hidden";
+        final Map<String, String> vars = Map.of(
+            "target", targetName,
+            "distance", String.valueOf((int) distance),
+            "time", String.valueOf(secondsUntilUpdate)
+        );
+
+        tracker.spigot().sendMessage(
+            ChatMessageType.ACTION_BAR,
+            new ComponentBuilder(
+                config.format(ConfigOption.TRACKING_MESSAGE, vars)
+            ).create()
+        );
+        }
+
+}

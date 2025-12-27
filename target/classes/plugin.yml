@@ -1,0 +1,23 @@
+name: PlayerTrackerr
+version: '1.0.0'
+main: dev.quacc.playertrackerr.PlayerTrackerr
+api-version: '1.21.5'
+author: QuaccOnCracc
+softdepend: [Vault]
+
+commands:
+  track:
+    description: 'Track a player'
+    permission: 'pt.track'
+  playertracker:
+    description: 'PlayerTracker main command'
+    aliases: 'pt'
+  trackers:
+    description: 'Open a menu showing all players currently tracking'
+    permission: 'pt.trackers'
+  cleartarget:
+    description: 'Clear your own tracking or another players'
+    aliases: 'ct'
+    permission: 'pt.cleartarget'
+
+
