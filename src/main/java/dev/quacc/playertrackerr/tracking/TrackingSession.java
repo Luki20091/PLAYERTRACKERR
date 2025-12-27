@@ -20,6 +20,9 @@ public class TrackingSession {
     private long lastCompassUpdate = 0L;
     // Last seconds-until-update value sent to the player's action bar — prevents spamming the action bar
     private int lastSentRemaining = -1;
+    // Distance caching to respect a separate distance update cooldown
+    private long lastDistanceUpdate = 0L;
+    private int cachedDistance = -1;
 
     public TrackingSession(UUID trackerId, UUID targetId, ConfigOptionsManager config) {
         this.trackerId = trackerId;
@@ -70,12 +73,48 @@ public class TrackingSession {
             }
 
             case UPDATE -> {
-                final boolean updated = shouldUpdateCompass();
-                if (updated) tracker.setCompassTarget(target.getLocation());
-                sendHUD(tracker, target, updated ? 0 : getRemainingSeconds());
+                final boolean compassUpdated = shouldUpdateCompass();
+                final boolean distanceUpdated = shouldUpdateDistance();
+
+                if (compassUpdated) tracker.setCompassTarget(target.getLocation());
+
+                if (distanceUpdated) updateCachedDistance(tracker, target);
+
+                sendHUD(tracker, target, distanceUpdated ? 0 : getRemainingDistanceSeconds());
                 yield true;
             }
         };
+    }
+
+    private boolean shouldUpdateDistance() {
+        final boolean enabled = config.getBoolean(ConfigOption.COMPASS_UPDATE_COOLDOWN_ENABLED);
+        if (!enabled) {
+            lastDistanceUpdate = System.currentTimeMillis();
+            return true;
+        }
+
+        final int seconds = config.getInt(ConfigOption.COMPASS_UPDATE_COOLDOWN_SECONDS);
+        final long now = System.currentTimeMillis();
+        if (now - lastDistanceUpdate >= seconds * 1000L) {
+            lastDistanceUpdate = now;
+            return true;
+        }
+        return false;
+    }
+
+    private int getRemainingDistanceSeconds() {
+        final boolean enabled = config.getBoolean(ConfigOption.COMPASS_UPDATE_COOLDOWN_ENABLED);
+        if (!enabled) return 0;
+
+        final int seconds = config.getInt(ConfigOption.COMPASS_UPDATE_COOLDOWN_SECONDS);
+        final long now = System.currentTimeMillis();
+        final long elapsed = now - lastDistanceUpdate;
+        final long remainingMs = Math.max(0L, seconds * 1000L - elapsed);
+        return (int) ((remainingMs + 999L) / 1000L);
+    }
+
+    private void updateCachedDistance(Player tracker, Player target) {
+        this.cachedDistance = (int) tracker.getLocation().distance(target.getLocation());
     }
 
     private int getRemainingSeconds() {
@@ -120,12 +159,12 @@ public class TrackingSession {
             // flooding the action bar while the player simply holds the compass.
             if (secondsUntilUpdate != 0 && secondsUntilUpdate == lastSentRemaining) return;
 
-            final double distance = tracker.getLocation().distance(target.getLocation());
+            final int distance = this.cachedDistance >= 0 ? this.cachedDistance : (int) tracker.getLocation().distance(target.getLocation());
 
             final String targetName = config.getBoolean(ConfigOption.TRACKING_SHOW_TARGET) ? target.getName() : "Hidden";
             final Map<String, String> vars = Map.of(
                 "target", targetName,
-                "distance", String.valueOf((int) distance),
+                "distance", String.valueOf(distance),
                 "time", String.valueOf(secondsUntilUpdate)
             );
 
