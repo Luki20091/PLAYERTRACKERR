@@ -95,7 +95,7 @@ no-permission: "&cYou do not have permission to do that."
 reloaded-config-message: "&aConfiguration reloaded successfully!"
 
 # Actionbar tracking display (sent repeatedly)
-tracking-message: "&aTracking &e{target} &7| Distance: &b{distance}m &8(&f{time}s&8)"
+tracking-message: "&aTracking &e{target} &7| Distance: &b{distance}m &7(&f{time}s&7)"
 
 # No player supplied to /track
 player-not-specified: "&cPlease specify a player!"

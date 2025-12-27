@@ -11,7 +11,6 @@ import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
-import java.util.Arrays;
 
 @CommandParameters(
             name = "playertracker",

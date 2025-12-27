@@ -79,17 +79,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
-                <groupId>org.openrewrite.maven</groupId>
-                <artifactId>rewrite-maven-plugin</artifactId>
-                <version>5.47.3</version>
-                <configuration>
-                    <activeRecipes>
-                        <recipe>org.openrewrite.java.migrate.UpgradeToJava21</recipe>
-                    </activeRecipes>
-                    <activeRecipeFile>${project.basedir}/rewrite.yml</activeRecipeFile>
-                </configuration>
-            </plugin>
+            <!-- OpenRewrite plugin removed after applying necessary changes -->
         </plugins>
         <resources>
             <resource>
@@ -140,7 +130,7 @@
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>1.21.5-R0.1-SNAPSHOT</version>
+            <version>1.21.8-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
 

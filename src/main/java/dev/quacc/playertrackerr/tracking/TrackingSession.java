@@ -18,6 +18,8 @@ public class TrackingSession {
     private final ConfigOptionsManager config;
     private final CompassHelper compassHelper;
     private long lastCompassUpdate = 0L;
+    // Last seconds-until-update value sent to the player's action bar — prevents spamming the action bar
+    private int lastSentRemaining = -1;
 
     public TrackingSession(UUID trackerId, UUID targetId, ConfigOptionsManager config) {
         this.trackerId = trackerId;
@@ -106,25 +108,35 @@ public class TrackingSession {
     public void updateCompassIfAllowed(Player tracker, Player target) {
         if (shouldUpdateCompass()) {
             tracker.setCompassTarget(target.getLocation());
+            // When we actually update the compass, send HUD immediately with 0 seconds remaining
+            sendHUD(tracker, target, 0);
+            lastSentRemaining = 0;
         }
     }
 
         private void sendHUD(Player tracker, Player target, int secondsUntilUpdate) {
-        final double distance = tracker.getLocation().distance(target.getLocation());
+            // Only send the action bar when the compass actually updated (secondsUntilUpdate == 0)
+            // or when the remaining seconds value changed (once per second). This prevents
+            // flooding the action bar while the player simply holds the compass.
+            if (secondsUntilUpdate != 0 && secondsUntilUpdate == lastSentRemaining) return;
 
-        final String targetName = config.getBoolean(ConfigOption.TRACKING_SHOW_TARGET) ? target.getName() : "Hidden";
-        final Map<String, String> vars = Map.of(
-            "target", targetName,
-            "distance", String.valueOf((int) distance),
-            "time", String.valueOf(secondsUntilUpdate)
-        );
+            final double distance = tracker.getLocation().distance(target.getLocation());
 
-        tracker.spigot().sendMessage(
-            ChatMessageType.ACTION_BAR,
-            new ComponentBuilder(
-                config.format(ConfigOption.TRACKING_MESSAGE, vars)
-            ).create()
-        );
+            final String targetName = config.getBoolean(ConfigOption.TRACKING_SHOW_TARGET) ? target.getName() : "Hidden";
+            final Map<String, String> vars = Map.of(
+                "target", targetName,
+                "distance", String.valueOf((int) distance),
+                "time", String.valueOf(secondsUntilUpdate)
+            );
+
+            tracker.spigot().sendMessage(
+                ChatMessageType.ACTION_BAR,
+                new ComponentBuilder(
+                    config.format(ConfigOption.TRACKING_MESSAGE, vars)
+                ).create()
+            );
+
+            lastSentRemaining = secondsUntilUpdate;
         }
 
 }
