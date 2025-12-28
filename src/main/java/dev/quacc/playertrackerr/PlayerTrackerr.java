@@ -23,8 +23,8 @@ public final class PlayerTrackerr extends JavaPlugin {
         saveDefaultConfig();
 
         final ConfigOptionsManager configManager = new ConfigOptionsManager(this);
-        final dev.quacc.playertrackerr.items.ItemsAdderBridge itemsAdder = new dev.quacc.playertrackerr.items.ItemsAdderBridge();
-        configManager.setItemsAdder(itemsAdder);
+        // Register plugin-managed compass recipe/item
+        dev.quacc.playertrackerr.items.CustomCompassFactory.registerRecipe(this);
         final Economy economy = setupEconomy();
         final TrackTask trackTask = new TrackTask(this, configManager);
 
@@ -34,6 +34,8 @@ public final class PlayerTrackerr extends JavaPlugin {
 
         commandRegistration.registerCommands();
         getServer().getPluginManager().registerEvents(new CompassClickListener(trackingManager, configManager), this);
+        getServer().getPluginManager().registerEvents(new dev.quacc.playertrackerr.items.CompassCraftListener(configManager), this);
+        getServer().getPluginManager().registerEvents(new dev.quacc.playertrackerr.tracking.listener.TrackedItemListener(trackingManager), this);
         getServer().getPluginManager().registerEvents(new TrackingListener(trackingManager), this);
         getServer().getPluginManager().registerEvents(new AdminMenuClickListener(trackingManager, adminMenuHelper), this);
     }

@@ -11,14 +11,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TrackTask {
 
     private final PlayerTrackerr plugin;
-    private BukkitRunnable updateTask;
     private final ConfigOptionsManager config;
+    // map of tracker UUID to their scheduled update task
+    private final java.util.Map<java.util.UUID, BukkitRunnable> sessionTasks = new java.util.concurrent.ConcurrentHashMap<>();
 
     public TrackTask(PlayerTrackerr plugin, ConfigOptionsManager config) {
         this.plugin = plugin;
         this.config = config;
 
-        this.startTask();
+        // No global loop — schedule per-session tasks when tracking starts
     }
 
     /*
@@ -43,21 +44,67 @@ public class TrackTask {
         return this.sessions;
     }
 
-    public void startTracking(Player tracker, Player target) {
+    public void startTracking(Player tracker, Player target, String trackedItemId) {
         final UUID trackerId = tracker.getUniqueId();
         final UUID targetId = target.getUniqueId();
 
-        TrackingSession session = new TrackingSession(trackerId, targetId, config);
+        TrackingSession session = new TrackingSession(trackerId, targetId, config, trackedItemId);
         sessions.put(trackerId, session);
         plugin.getAdminMenuHelper().refreshAll();
+
+        // Always schedule a per-session task every second (20 ticks).
+        // The session itself decides when to perform an actual compass update;
+        // running every second allows the action-bar countdown to refresh each second.
+        long ticks = 20L;
+
+        BukkitRunnable task = new BukkitRunnable() {
+            @Override
+            public void run() {
+                final Player trackerPlayer = plugin.getServer().getPlayer(session.getTrackerId());
+                final Player targetPlayer = plugin.getServer().getPlayer(session.getTargetId());
+
+                if (trackerPlayer != null && targetPlayer != null && trackerPlayer.isOnline() && targetPlayer.isOnline()) {
+                    // If HUD for this tracker is suppressed (e.g., they just attempted a search
+                    // and we displayed a cooldown action-bar), we should avoid sending the
+                    // session HUD which would overwrite the cooldown message. In that case
+                    // only update the compass target without sending the HUD.
+                    if (isHUDSuppressed(session.getTrackerId())) {
+                        session.updateTargetOnly(trackerPlayer, targetPlayer);
+                        return;
+                    }
+
+                    if (!session.validateAndUpdate(plugin, trackerPlayer, targetPlayer)) {
+                        trackerPlayer.setCompassTarget(trackerPlayer.getWorld().getSpawnLocation());
+                        // stop and cleanup
+                        this.cancel();
+                        sessions.remove(session.getTrackerId());
+                        sessionTasks.remove(session.getTrackerId());
+                        plugin.getAdminMenuHelper().refreshAll();
+                    }
+                } else {
+                    // players missing or offline: stop and cleanup
+                    this.cancel();
+                    sessions.remove(session.getTrackerId());
+                    sessionTasks.remove(session.getTrackerId());
+                    plugin.getAdminMenuHelper().refreshAll();
+                }
+            }
+        };
+
+        sessionTasks.put(trackerId, task);
+        task.runTaskTimer(plugin, 0L, ticks);
     }
 
     public void stopTracking(Player player) {
         final UUID uuid = player.getUniqueId();
 
+        // cancel scheduled task if present
+        final BukkitRunnable t = sessionTasks.remove(uuid);
+        if (t != null) t.cancel();
+
         final boolean removed = sessions.entrySet().removeIf(entry ->
-                entry.getKey().equals(uuid) ||
-                entry.getValue().getTargetId().equals(uuid));
+            entry.getKey().equals(uuid) ||
+            entry.getValue().getTargetId().equals(uuid));
 
         if (removed) plugin.getAdminMenuHelper().refreshAll();
     }
@@ -65,7 +112,8 @@ public class TrackTask {
     // Only called on server shutdown
     public void stopAllTracking() {
         sessions.clear();
-        if (updateTask != null) updateTask.cancel();
+        sessionTasks.values().forEach(BukkitRunnable::cancel);
+        sessionTasks.clear();
     }
 
     public TrackingSession getSessionByTarget(Player target) {
@@ -86,38 +134,6 @@ public class TrackTask {
     public boolean isTracking(Player tracker) {
         return sessions.containsKey(tracker.getUniqueId());
     }
-
-    private void startTask() {
-        updateTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                if (sessions.isEmpty()) return;
-
-                sessions.entrySet().removeIf(entry -> {
-                    final TrackingSession session = entry.getValue();
-                    final Player tracker = plugin.getServer().getPlayer(session.getTrackerId());
-                    final Player target = plugin.getServer().getPlayer(session.getTargetId());
-
-                    if (isHUDSuppressed(session.getTrackerId())) {
-                        if (tracker != null && target != null && tracker.isOnline() && target.isOnline()) {
-                            session.updateCompassIfAllowed(tracker, target);
-                            return false;
-                        }
-                    }
-
-                    if (!session.validateAndUpdate(plugin, tracker, target)) {
-                        if (tracker != null && tracker.isOnline()) {
-                            tracker.setCompassTarget(tracker.getWorld().getSpawnLocation());
-                        }
-                        return true;
-                    }
-
-                    return false;
-                });
-            }
-        };
-
-        updateTask.runTaskTimer(plugin, 0L, 4L);
-    }
+    
 
 }

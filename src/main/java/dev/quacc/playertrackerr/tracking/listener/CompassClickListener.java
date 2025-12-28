@@ -4,7 +4,6 @@ import dev.quacc.playertrackerr.config.ConfigOption;
 import dev.quacc.playertrackerr.config.ConfigOptionsManager;
 import dev.quacc.playertrackerr.tracking.StopReason;
 import dev.quacc.playertrackerr.tracking.TrackingManager;
-import dev.quacc.playertrackerr.tracking.helper.CooldownHelper;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import org.bukkit.Bukkit;
@@ -23,7 +22,6 @@ public class CompassClickListener implements Listener {
 
     private final TrackingManager trackingManager;
     private final ConfigOptionsManager config;
-    private final CooldownHelper cooldownHelper = new CooldownHelper();
 
     public CompassClickListener(TrackingManager trackingManager, ConfigOptionsManager config) {
         this.trackingManager = trackingManager;
@@ -56,8 +54,8 @@ public class CompassClickListener implements Listener {
     private boolean canUse(Player tracker) {
         final long cooldownMs = config.getInt(ConfigOption.COOLDOWN_SECONDS) * 1000L;
 
-        if (cooldownHelper.isOnCooldown(tracker.getUniqueId(), cooldownMs)) {
-            final long remaining = cooldownHelper.getRemaining(tracker.getUniqueId(), cooldownMs);
+        if (trackingManager.getCooldownHelper().isOnCooldown(tracker.getUniqueId(), cooldownMs)) {
+            final long remaining = trackingManager.getCooldownHelper().getRemaining(tracker.getUniqueId(), cooldownMs);
             final String cooldownMessage = config.format(ConfigOption.COOLDOWN_MESSAGE,
                     Map.of("time", String.valueOf(remaining)));
 
@@ -67,7 +65,7 @@ public class CompassClickListener implements Listener {
             return false;
         }
 
-        cooldownHelper.apply(tracker.getUniqueId());
+        trackingManager.getCooldownHelper().apply(tracker.getUniqueId());
         return true;
     }
 
@@ -98,42 +96,38 @@ public class CompassClickListener implements Listener {
             tracker.sendMessage(config.format(ConfigOption.NO_CLOSE_PLAYER));
             return;
         }
-        trackingManager.startTracking(tracker, nearest);
-        // Consume durability on explicit right-click usage if configured
-        if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_CONSUME_DURABILITY)) {
-            try {
-                final org.bukkit.inventory.ItemStack item = tracker.getInventory().getItemInMainHand();
-                if (item != null && config.isConfiguredCompass(item)) {
-                    final org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
-                    if (meta instanceof org.bukkit.inventory.meta.Damageable) {
-                        final org.bukkit.inventory.meta.Damageable dmg = (org.bukkit.inventory.meta.Damageable) meta;
-                        final int current = dmg.getDamage();
-                        int max = item.getType().getMaxDurability();
-                        try {
-                            var ia = config.getItemsAdder();
-                            if (ia != null && ia.isAvailable()) {
-                                String iaId = ia.getCustomId(item);
-                                int iaMax = ia.getMaxDurabilityForId(iaId);
-                                if (iaMax > 0) max = iaMax;
-                            }
-                        } catch (Throwable ignored) {}
-                        final int next = current + 1;
-                        if (next >= max && item.getAmount() <= 1) {
-                            tracker.getInventory().setItemInMainHand(null);
-                        } else if (next >= max) {
-                            item.setAmount(item.getAmount() - 1);
-                            if (item.getAmount() > 0) {
-                                dmg.setDamage(0);
-                                item.setItemMeta(dmg);
-                            }
-                        } else {
-                            dmg.setDamage(next);
-                            item.setItemMeta(dmg);
+        // Ensure the specific ItemStack has a unique id if stackable is disabled
+        String trackedId = null;
+        try {
+            final org.bukkit.inventory.ItemStack item = tracker.getInventory().getItemInMainHand();
+            if (item != null && config.isConfiguredCompass(item)) {
+                var meta = item.getItemMeta();
+                if (meta != null) {
+                    var pdc = meta.getPersistentDataContainer();
+                    var uniqueKey = new org.bukkit.NamespacedKey(org.bukkit.plugin.java.JavaPlugin.getPlugin(dev.quacc.playertrackerr.PlayerTrackerr.class), "pt_unique");
+                    if (pdc.has(uniqueKey, org.bukkit.persistence.PersistentDataType.STRING)) {
+                        trackedId = pdc.get(uniqueKey, org.bukkit.persistence.PersistentDataType.STRING);
+                    } else {
+                        // create unique id for this stack if stacking is disabled so we can track the specific item
+                        if (!config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_STACKABLE)) {
+                            trackedId = java.util.UUID.randomUUID().toString();
+                            pdc.set(uniqueKey, org.bukkit.persistence.PersistentDataType.STRING, trackedId);
+                            item.setItemMeta(meta);
                         }
                     }
                 }
-            } catch (Throwable ignored) {}
-        }
+            }
+        } catch (Throwable ignored) {}
+
+        trackingManager.startTracking(tracker, nearest, trackedId);
+
+        // Immediately perform an update for this session so the right-click triggers
+        // the compass update and consumes durability (if enabled) without risking
+        // a double-consume from the scheduled task.
+        try {
+            var session = trackingManager.getTrackTask().getSessions().get(tracker.getUniqueId());
+            if (session != null) session.updateCompassIfAllowed(tracker, nearest);
+        } catch (Throwable ignored) {}
     }
 
     private Player nearestPlayer(Player tracker) {

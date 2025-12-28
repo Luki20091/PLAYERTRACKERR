@@ -3,6 +3,7 @@ package dev.quacc.playertrackerr.tracking;
 import dev.quacc.playertrackerr.config.ConfigOption;
 import dev.quacc.playertrackerr.config.ConfigOptionsManager;
 import dev.quacc.playertrackerr.tracking.helper.FeeHelper;
+import dev.quacc.playertrackerr.tracking.helper.CooldownHelper;
 import net.milkbowl.vault.economy.Economy;
 import org.bukkit.entity.Player;
 
@@ -13,6 +14,7 @@ public class TrackingManager {
     private final TrackTask trackTask;
     private final ConfigOptionsManager config;
     private final FeeHelper feeHelper;
+    private final CooldownHelper cooldownHelper = new CooldownHelper();
 
     public TrackingManager(TrackTask trackTask, ConfigOptionsManager config, Economy economy) {
         this.trackTask = trackTask;
@@ -20,7 +22,11 @@ public class TrackingManager {
         this.feeHelper = new FeeHelper(config, economy);
     }
 
-    public void startTracking(Player tracker, Player target) {
+    public CooldownHelper getCooldownHelper() {
+        return this.cooldownHelper;
+    }
+
+    public void startTracking(Player tracker, Player target, String trackedItemId) {
         if (tracker.equals(target)) {
             tracker.sendMessage(config.format(ConfigOption.TRACK_SELF));
             return;
@@ -39,12 +45,17 @@ public class TrackingManager {
         if (!feeHelper.processFees(tracker)) return;
         if (trackTask.isTracking(tracker)) stopTrackingSilent(tracker);
 
-        trackTask.startTracking(tracker, target);
+        trackTask.startTracking(tracker, target, trackedItemId);
 
         if (target.hasPermission("pt.notify"))
             target.sendMessage(config.format(ConfigOption.NOTIFY_TARGET, Map.of(
                     "tracker", tracker.getName()
             )));
+    }
+
+    // Backwards-compatible overload: used by commands where no specific item was used
+    public void startTracking(Player tracker, Player target) {
+        startTracking(tracker, target, null);
     }
 
     public void stopTracking(Player tracker) {

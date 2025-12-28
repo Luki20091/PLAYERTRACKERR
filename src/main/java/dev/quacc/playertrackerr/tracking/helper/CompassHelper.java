@@ -21,7 +21,7 @@ public class CompassHelper {
     public CompassState validate(Player tracker) {
         final boolean requireInHand = config.getBoolean(ConfigOption.REQUIRE_COMPASS_HAND);
 
-        // Check inventory for at least one matching item (ItemsAdder id preferred)
+        // Check inventory for at least one matching item (configured material)
         boolean hasItem = Arrays.stream(tracker.getInventory().getStorageContents())
             .anyMatch(item -> config.isConfiguredCompass(item));
 

@@ -23,6 +23,11 @@ commands:
     aliases:
       - 'ct'
     permission: 'pt.cleartarget'
+  giveptcompass:
+    description: 'Give the configured PlayerTrackerr compass'
+    aliases:
+      - 'givecompass'
+    permission: 'pt.givecompass'
 
 permissions:
   pt.command.track:
@@ -30,6 +35,10 @@ permissions:
     default: op
   pt.compass:
     description: 'Allows starting tracking by right-clicking the configured compass item'
+    default: op
+
+  pt.givecompass:
+    description: 'Allows giving the configured plugin compass via /giveptcompass'
     default: op
 
 

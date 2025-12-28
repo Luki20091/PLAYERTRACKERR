@@ -1,3 +1,0 @@
-Place your piracki_kompas_XX.png texture frames here.
-Expected names: piracki_kompas_00.png, piracki_kompas_01.png, ...
-If you have textures in a subfolder (piracki_kompas/...), move them here or set model_path accordingly in configs/piracki_kompas.yml

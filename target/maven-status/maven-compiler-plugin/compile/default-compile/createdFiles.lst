@@ -1,6 +1,4 @@
 dev\quacc\playertrackerr\tracking\listener\AdminMenuClickListener.class
-dev\quacc\playertrackerr\tracking\TrackingSession.class
-dev\quacc\playertrackerr\tracking\listener\CompassClickListener.class
 dev\quacc\playertrackerr\tracking\TrackingSession$1.class
 dev\quacc\playertrackerr\tracking\helper\CompassHelper.class
 dev\quacc\playertrackerr\config\ConfigOption$Type.class
@@ -19,7 +17,6 @@ dev\quacc\playertrackerr\config\ConfigOptionsManager.class
 dev\quacc\playertrackerr\tracking\listener\CompassClickListener$1.class
 dev\quacc\playertrackerr\registration\CommandRegistration.class
 dev\quacc\playertrackerr\tracking\helper\FeeHelper.class
-dev\quacc\playertrackerr\tracking\listener\TrackingListener.class
 dev\quacc\playertrackerr\tracking\helper\CooldownHelper.class
 dev\quacc\playertrackerr\command\impl\PlayerTrackerInfoCommand.class
 dev\quacc\playertrackerr\config\ConfigOption.class
