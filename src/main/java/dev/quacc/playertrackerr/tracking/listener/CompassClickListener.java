@@ -9,7 +9,6 @@ import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -39,9 +38,14 @@ public class CompassClickListener implements Listener {
         if (!isClick(event)) return;
 
         final Player tracker = event.getPlayer();
-
         if (isLeftClick(event)) {
             handleLeftClick(tracker);
+            return;
+        }
+
+        // Require permission to start tracking via compass right-click
+        if (!tracker.hasPermission("pt.compass")) {
+            tracker.sendMessage(config.format(ConfigOption.NO_PERMISSION));
             return;
         }
 
@@ -68,7 +72,8 @@ public class CompassClickListener implements Listener {
     }
 
     private boolean isCompass(PlayerInteractEvent event) {
-        return event.getPlayer().getInventory().getItemInMainHand().getType() == Material.COMPASS;
+        final org.bukkit.inventory.ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
+        return config.isConfiguredCompass(item);
     }
 
     private boolean isClick(PlayerInteractEvent event) {
@@ -94,6 +99,41 @@ public class CompassClickListener implements Listener {
             return;
         }
         trackingManager.startTracking(tracker, nearest);
+        // Consume durability on explicit right-click usage if configured
+        if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_CONSUME_DURABILITY)) {
+            try {
+                final org.bukkit.inventory.ItemStack item = tracker.getInventory().getItemInMainHand();
+                if (item != null && config.isConfiguredCompass(item)) {
+                    final org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+                    if (meta instanceof org.bukkit.inventory.meta.Damageable) {
+                        final org.bukkit.inventory.meta.Damageable dmg = (org.bukkit.inventory.meta.Damageable) meta;
+                        final int current = dmg.getDamage();
+                        int max = item.getType().getMaxDurability();
+                        try {
+                            var ia = config.getItemsAdder();
+                            if (ia != null && ia.isAvailable()) {
+                                String iaId = ia.getCustomId(item);
+                                int iaMax = ia.getMaxDurabilityForId(iaId);
+                                if (iaMax > 0) max = iaMax;
+                            }
+                        } catch (Throwable ignored) {}
+                        final int next = current + 1;
+                        if (next >= max && item.getAmount() <= 1) {
+                            tracker.getInventory().setItemInMainHand(null);
+                        } else if (next >= max) {
+                            item.setAmount(item.getAmount() - 1);
+                            if (item.getAmount() > 0) {
+                                dmg.setDamage(0);
+                                item.setItemMeta(dmg);
+                            }
+                        } else {
+                            dmg.setDamage(next);
+                            item.setItemMeta(dmg);
+                        }
+                    }
+                }
+            } catch (Throwable ignored) {}
+        }
     }
 
     private Player nearestPlayer(Player tracker) {
@@ -103,6 +143,8 @@ public class CompassClickListener implements Listener {
 
         return Bukkit.getOnlinePlayers().stream()
                 .filter(target -> target != tracker)
+                // Skip players who have bypass permission so we search the next eligible player
+                .filter(target -> !target.hasPermission("pt.bypass"))
                 .filter(target -> target.getWorld().equals(tracker.getWorld()))
                 .filter(target -> target.getLocation().distanceSquared(trackerLocation) <= maxDistSquared)
                 .min(Comparator.comparingDouble(target -> target.getLocation().distanceSquared(trackerLocation)))

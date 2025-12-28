@@ -1,0 +1,36 @@
+info:
+  namespace: piracki_kompas
+
+items:
+  piracki_kompas:
+    display_name: "&fStary Kompas: &aPiratów"
+    category: "compasses"
+    lore:
+      - "&7Kliknij PPM, aby użyć."
+    resource:
+      material: COMPASS
+      generate: false
+      model_path: item/piracki_kompas
+    stack_size: 1
+    durability:
+      max_durability: 100
+      durability: 100
+      disappear_when_broken: true
+      unbreakable: false
+
+
+recipes:
+  crafting_table:
+    radio_czerwoni_0:
+      permission: "piracki_kompas.craft"
+      enabled: true
+      pattern:
+        - XEX
+        - ECE
+        - XEX
+      ingredients:
+        E: EMERALD
+        C: COMPASS
+      result:
+        item: piracki_kompas:piracki_kompas
+        amount: 1

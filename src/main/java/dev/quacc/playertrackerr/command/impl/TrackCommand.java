@@ -6,7 +6,6 @@ import dev.quacc.playertrackerr.command.PlayerTrackerCommand;
 import dev.quacc.playertrackerr.config.ConfigOption;
 import dev.quacc.playertrackerr.config.ConfigOptionsManager;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -19,7 +18,7 @@ import java.util.Map;
             aliases = {},
             usage = "/track (player)",
             requiredArgs = 1,
-            permissions = {"pt.track"},
+        permissions = {"pt.command.track"},
             playerOnly = true,
             description = "Track a player"
     )
@@ -35,7 +34,7 @@ import java.util.Map;
         final Player tracker = (Player) sender;
 
         final boolean hasCompass = Arrays.stream(tracker.getInventory().getStorageContents())
-                .anyMatch(item -> item != null && item.getType() == Material.COMPASS);
+            .anyMatch(item -> getConfigManager().isConfiguredCompass(item));
 
         if (!hasCompass) {
             tracker.sendMessage(getConfigManager().format(ConfigOption.NO_COMPASS));

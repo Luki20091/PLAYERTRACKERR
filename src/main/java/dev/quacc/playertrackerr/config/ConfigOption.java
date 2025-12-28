@@ -15,6 +15,10 @@ public enum ConfigOption {
     COOLDOWN_MESSAGE("compass.cooldown-message", Type.STRING, "&cYou must wait &f{time}s &cbefore searching again!"),
     COMPASS_UPDATE_COOLDOWN_ENABLED("compass.update-cooldown-enabled", Type.BOOLEAN, false),
     COMPASS_UPDATE_COOLDOWN_SECONDS("compass.update-cooldown-seconds", Type.INTEGER, 2),
+    COMPASS_ITEM_MATERIAL("compass.item-material", Type.MATERIAL, Material.COMPASS),
+    COMPASS_ITEM("compass.item", Type.STRING, "pirate_items:piracki_kompas"),
+    COMPASS_CONSUME_DURABILITY("compass.consume-durability", Type.BOOLEAN, false),
+    COMPASS_CONSUME_ON_HUD_REFRESH("compass.consume-on-hud-refresh", Type.BOOLEAN, false),
 
     TRACKING_FEE_ITEM_ENABLED("tracking-fee-item.enabled", Type.BOOLEAN, true),
     TRACKING_FEE_ITEM_MATERIAL("tracking-fee-item.material", Type.MATERIAL, Material.DIAMOND),

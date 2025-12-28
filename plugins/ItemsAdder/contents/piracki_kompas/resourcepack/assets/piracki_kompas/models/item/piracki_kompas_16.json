@@ -1,0 +1,4 @@
+{
+  "parent": "item/generated",
+  "textures": { "layer0": "piracki_kompas:item/piracki_kompas_16" }
+}

@@ -13,9 +13,54 @@ import java.util.stream.Collectors;
 public final class ConfigOptionsManager {
 
     private final JavaPlugin plugin;
+    private dev.quacc.playertrackerr.items.ItemsAdderBridge itemsAdder;
 
     public ConfigOptionsManager(JavaPlugin plugin) {
         this.plugin = plugin;
+    }
+
+    public void setItemsAdder(dev.quacc.playertrackerr.items.ItemsAdderBridge bridge) {
+        this.itemsAdder = bridge;
+    }
+
+    public dev.quacc.playertrackerr.items.ItemsAdderBridge getItemsAdder() {
+        return this.itemsAdder;
+    }
+
+    public boolean isConfiguredCompass(org.bukkit.inventory.ItemStack item) {
+        if (item == null) return false;
+        // Prefer ItemsAdder id matching when available and configured
+        try {
+            final String configured = getString(ConfigOption.COMPASS_ITEM);
+            if (configured != null && !configured.isBlank()) {
+                // If configured looks like a namespaced ItemsAdder id (contains ':')
+                var ia = this.itemsAdder;
+                if (configured.contains(":")) {
+                    if (ia != null && ia.isAvailable()) {
+                        String id = ia.getCustomId(item);
+                        return id != null && id.equalsIgnoreCase(configured);
+                    }
+                    // ItemsAdder not available -> cannot match ItemsAdder id
+                    return false;
+                }
+
+                // Otherwise treat configured value as a Material name
+                try {
+                    org.bukkit.Material m = org.bukkit.Material.valueOf(configured.toUpperCase());
+                    return item.getType() == m;
+                } catch (IllegalArgumentException ignored) {
+                    return false;
+                }
+            }
+        } catch (Throwable ignored) {}
+
+        // If no specific `compass.item` configured, fallback to legacy material config
+        try {
+            org.bukkit.Material legacy = ConfigOption.COMPASS_ITEM_MATERIAL.get(this.plugin, org.bukkit.Material.class);
+            return item.getType() == legacy;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     public String getString(ConfigOption option) {

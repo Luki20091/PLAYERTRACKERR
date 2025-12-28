@@ -2,7 +2,6 @@ package dev.quacc.playertrackerr.tracking.helper;
 
 import dev.quacc.playertrackerr.config.ConfigOption;
 import dev.quacc.playertrackerr.config.ConfigOptionsManager;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
 import java.util.Arrays;
@@ -22,17 +21,18 @@ public class CompassHelper {
     public CompassState validate(Player tracker) {
         final boolean requireInHand = config.getBoolean(ConfigOption.REQUIRE_COMPASS_HAND);
 
-        if (Arrays.stream(tracker.getInventory().getStorageContents())
-                .noneMatch(item -> item != null && item.getType() == Material.COMPASS)) {
-            return CompassState.STOP;
-        }
+        // Check inventory for at least one matching item (ItemsAdder id preferred)
+        boolean hasItem = Arrays.stream(tracker.getInventory().getStorageContents())
+            .anyMatch(item -> config.isConfiguredCompass(item));
 
-        if (requireInHand &&
-                tracker.getInventory().getItemInMainHand().getType() != Material.COMPASS) {
+        if (!hasItem) return CompassState.STOP;
+
+        if (requireInHand && !config.isConfiguredCompass(tracker.getInventory().getItemInMainHand())) {
             return CompassState.PAUSE;
         }
 
         return CompassState.UPDATE;
     }
 
+    
 }

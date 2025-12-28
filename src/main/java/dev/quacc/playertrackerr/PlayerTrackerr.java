@@ -23,6 +23,8 @@ public final class PlayerTrackerr extends JavaPlugin {
         saveDefaultConfig();
 
         final ConfigOptionsManager configManager = new ConfigOptionsManager(this);
+        final dev.quacc.playertrackerr.items.ItemsAdderBridge itemsAdder = new dev.quacc.playertrackerr.items.ItemsAdderBridge();
+        configManager.setItemsAdder(itemsAdder);
         final Economy economy = setupEconomy();
         final TrackTask trackTask = new TrackTask(this, configManager);
 

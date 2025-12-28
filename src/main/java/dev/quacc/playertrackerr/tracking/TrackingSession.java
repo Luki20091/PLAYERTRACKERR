@@ -41,6 +41,11 @@ public class TrackingSession {
 
     public boolean validateAndUpdate(JavaPlugin plugin, Player tracker, Player target) {
         if (!arePlayersOnlineAndNonNull(tracker, target)) return false;
+        // If the target has bypass permission, stop tracking and notify the tracker.
+        if (target != null && target.hasPermission("pt.bypass")) {
+            tracker.sendMessage(config.format(dev.quacc.playertrackerr.config.ConfigOption.TRACKER_BYPASS_MESSAGE));
+            return false;
+        }
         if (!withinDistance(tracker, target)) return false;
 
         return handleCompassState(tracker, target, plugin);
@@ -79,6 +84,10 @@ public class TrackingSession {
                 if (compassUpdated) tracker.setCompassTarget(target.getLocation());
 
                 if (distanceUpdated) updateCachedDistance(tracker, target);
+                // If configured, consume durability when a search actually triggers
+                if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_CONSUME_DURABILITY) && (compassUpdated || distanceUpdated)) {
+                    consumeDurability(tracker);
+                }
 
                 sendHUD(tracker, target, distanceUpdated ? 0 : getRemainingDistanceSeconds());
                 yield true;
@@ -117,16 +126,7 @@ public class TrackingSession {
         this.cachedDistance = (int) tracker.getLocation().distance(target.getLocation());
     }
 
-    private int getRemainingSeconds() {
-        final boolean enabled = config.getBoolean(ConfigOption.COMPASS_UPDATE_COOLDOWN_ENABLED);
-        if (!enabled) return 0;
-
-        final int seconds = config.getInt(ConfigOption.COMPASS_UPDATE_COOLDOWN_SECONDS);
-        final long now = System.currentTimeMillis();
-        final long elapsed = now - lastCompassUpdate;
-        final long remainingMs = Math.max(0L, seconds * 1000L - elapsed);
-        return (int) ((remainingMs + 999L) / 1000L);
-    }
+    
 
     private boolean shouldUpdateCompass() {
         final boolean enabled = config.getBoolean(ConfigOption.COMPASS_UPDATE_COOLDOWN_ENABLED);
@@ -148,9 +148,50 @@ public class TrackingSession {
         if (shouldUpdateCompass()) {
             tracker.setCompassTarget(target.getLocation());
             // When we actually update the compass, send HUD immediately with 0 seconds remaining
+            if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_CONSUME_DURABILITY)) {
+                consumeDurability(tracker);
+            }
             sendHUD(tracker, target, 0);
             lastSentRemaining = 0;
         }
+    }
+
+    private void consumeDurability(Player tracker) {
+        try {
+            final org.bukkit.inventory.ItemStack item = tracker.getInventory().getItemInMainHand();
+            if (item == null) return;
+            if (!config.isConfiguredCompass(item)) return;
+            final org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
+            if (!(meta instanceof org.bukkit.inventory.meta.Damageable)) return;
+
+            final org.bukkit.inventory.meta.Damageable dmg = (org.bukkit.inventory.meta.Damageable) meta;
+            final int current = dmg.getDamage();
+            int max = item.getType().getMaxDurability();
+
+            // Prefer ItemsAdder-configured max durability if available
+            try {
+                var ia = config.getItemsAdder();
+                if (ia != null && ia.isAvailable()) {
+                    String iaId = ia.getCustomId(item);
+                    int iaMax = ia.getMaxDurabilityForId(iaId);
+                    if (iaMax > 0) max = iaMax;
+                }
+            } catch (Throwable ignored) {}
+            final int next = current + 1;
+            if (next >= max && item.getAmount() <= 1) {
+                tracker.getInventory().setItemInMainHand(null);
+            } else if (next >= max) {
+                // consume one and reset damage for remaining stack
+                item.setAmount(item.getAmount() - 1);
+                if (item.getAmount() > 0) {
+                    dmg.setDamage(0);
+                    item.setItemMeta(dmg);
+                }
+            } else {
+                dmg.setDamage(next);
+                item.setItemMeta(dmg);
+            }
+        } catch (Throwable ignored) {}
     }
 
         private void sendHUD(Player tracker, Player target, int secondsUntilUpdate) {
@@ -175,7 +216,14 @@ public class TrackingSession {
                 ).create()
             );
 
-            lastSentRemaining = secondsUntilUpdate;
+                // Optionally consume durability when the HUD remaining seconds decreases
+                if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_CONSUME_ON_HUD_REFRESH)) {
+                    if (secondsUntilUpdate != 0 && lastSentRemaining > 0 && secondsUntilUpdate < lastSentRemaining) {
+                        consumeDurability(tracker);
+                    }
+                }
+
+                lastSentRemaining = secondsUntilUpdate;
         }
 
 }

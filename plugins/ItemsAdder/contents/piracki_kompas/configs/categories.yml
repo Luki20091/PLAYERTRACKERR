@@ -1,0 +1,10 @@
+info:
+  namespace: piracki_kompas
+
+categories:
+  compasses:
+    enabled: true
+    name: "&0Kompasy"
+    icon: "piracki_kompas:piracki_kompas"
+    items:
+      - "piracki_kompas:piracki_kompas"

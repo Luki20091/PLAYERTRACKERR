@@ -10,7 +10,7 @@ softdepend:
 commands:
   track:
     description: 'Track a player'
-    permission: 'pt.track'
+    permission: 'pt.command.track'
   playertracker:
     description: 'PlayerTracker main command'
     aliases:
@@ -23,5 +23,13 @@ commands:
     aliases:
       - 'ct'
     permission: 'pt.cleartarget'
+
+permissions:
+  pt.command.track:
+    description: 'Allows using the /track command'
+    default: op
+  pt.compass:
+    description: 'Allows starting tracking by right-clicking the configured compass item'
+    default: op
 
 

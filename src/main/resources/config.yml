@@ -20,7 +20,7 @@
 track-nearest: true
 
 # Maximum distance (in blocks) a target can be from the tracker.
-tracking-distance: 10000
+tracking-distance: 1000
 
 
 # ==============================================================
@@ -31,17 +31,34 @@ compass:
   # If true, player must HOLD the compass.
   # If false, compass only needs to be somewhere in their inventory.
   require-compass-hand: true
+  
+  # Which item should be considered the "compass" for this plugin.
+  # Default: an ItemsAdder custom item id. For ItemsAdder items use the
+  # namespaced id (e.g. "pirate_items:piracki_kompas"). For vanilla items
+  # you may also use the material name (e.g. "COMPASS").
+  item: "pirate_items:piracki_kompas"
 
+  # (Display name removed) The plugin matches the configured material only.
+  
   # Cooldown after clicking a compass (in seconds).
-  cooldown-seconds: 5
-
+  cooldown-seconds: 300
+  
   # Sent when clicking the compass while on cooldown.
-  cooldown-message: "&cYou must wait &f{time}s &cbefore searching again!"
+  search-cooldown: '&cMusisz poczekać &f{time}s &czanim ponownie rozpoczniesz wyszukiwanie!'
   # If true, compass target updates will be rate-limited by the cooldown below.
   # Set to true to prevent constant compass target refresh; update-cooldown-seconds
   # controls how often (in seconds) the compass target is updated.
   update-cooldown-enabled: true
-  update-cooldown-seconds: 20
+  update-cooldown-seconds: 60
+
+  # If true, using the configured compass item will consume 1 durability (if the item
+  # supports `Damageable` meta). When the item reaches max damage it will be
+  # removed from the player's hand.
+  consume-durability: false
+
+  # If true, each time the HUD cooldown seconds decreases (action bar refresh)
+  # the item will also consume 1 durability. Disable unless you intend this behavior.
+  consume-on-hud-refresh: false
 
 
 # ==============================================================
@@ -50,17 +67,18 @@ compass:
 
 tracking-fee-item:
   enabled: false
-  material: "DIAMOND"
+  material: DIAMOND
   amount: 1
-  item-taken-message: "&cRequired tracking fee of &f{amount} {item} &ctaken"
+  item-taken-message: '&cRequired tracking fee of &f{amount} {item} &ctaken'
 
 tracking-fee-vault:
   enabled: false
   amount: 0
-  withdraw-fee-message: "&cWithdraw tracking fee of &f{amount} &cfrom your account!"
-
-# Whether the tracked player's name should be visible in the action bar tracking HUD
-tracking.show-target: false
+  withdraw-fee-message: '&cWithdraw tracking fee of &f{amount} &cfrom your account!'
+tracking:
+  
+  # Whether the tracked player's name should be visible in the action bar tracking HUD
+  show-target: false
 
 
 # ==============================================================
@@ -68,67 +86,66 @@ tracking.show-target: false
 # ==============================================================
 
 # Global plugin prefix
-plugin-prefix: "&a&lTracker &8» "
+plugin-prefix: '&x&F&1&4&1&4&1&lS&x&F&2&5&3&5&3&lt&x&F&4&6&5&6&5&lr&x&F&5&7&7&7&7&le&x&F&7&8&9&8&9&la&x&F&8&9&C&9&C&lm&x&F&9&A&E&A&E&lC&x&F&B&C&0&C&0&lr&x&F&C&D&2&D&2&la&x&F&E&E&4&E&4&lf&x&F&F&F&6&F&6&lt &8» '
+# Brak graczy w pobliżu do śledzenia
+no-close-player: '&cNie znaleziono żadnych pobliskich graczy do śledzenia!'
 
-# No nearby players to track
-no-close-player: "&cNo nearby players found to track!"
+# Cel oddalił się poza maksymalny dystans
+outside-tracking-distance: '&fGracz &coddalił się zbyt daleko, aby go śledzić!'
 
-# Target left max distance
-outside-tracking-distance: "&f{target} &chas moved too far away to track!"
+# Brak wymaganego przedmiotu-opłaty
+insufficient-fee-item: '&cBrakuje wymaganej opłaty za śledzenie: &f{amount} {item}'
 
-# Missing required item
-insufficient-fee-item: "&cMissing required tracking fee: &f{amount} {item}"
+# Brak wymaganej waluty Vault
+insufficient-fee-vault: '&cPotrzebujesz co najmniej &f{amount}&c, aby śledzić tego gracza!'
 
-# Missing Vault currency
-insufficient-fee-vault: "&cYou need at least &f{amount}&c to track this player!"
+# Powiadomienie celu o byciu śledzonym
+notify-target: '&cOSTRZEŻENIE: Jesteś śledzony przez &f{tracker}'
 
-# Notify target of being tracked
-notify-target: "&cWARNING: You are being tracked by &f{tracker}"
+# Próba śledzenia samego siebie
+track-self: '&cNie możesz śledzić samego siebie!'
 
-# Attempting to track yourself
-track-self: "&cYou cannot track yourself!"
+# Brak uprawnień
+no-permission: '&cNie masz uprawnień do wykonania tej akcji.'
 
-# Generic no-permission
-no-permission: "&cYou do not have permission to do that."
+# Pomyślne przeładowanie konfiguracji
+reloaded-config-message: '&aKonfiguracja została pomyślnie przeładowana!'
 
-# Config reload success
-reloaded-config-message: "&aConfiguration reloaded successfully!"
+# Pasek akcji śledzenia (wysyłany cyklicznie)
+tracking-message: '&aNajbliższy Gracz &7| &aDystans: &b{distance}m &7(&a{time}s&7)'
 
-# Actionbar tracking display (sent repeatedly)
-tracking-message: "&aTracking &e{target} &7| Distance: &b{distance}m &7(&f{time}s&7)"
+# Nie podano gracza w /track
+player-not-specified: '&cPodaj gracza do śledzenia!'
 
-# No player supplied to /track
-player-not-specified: "&cPlease specify a player!"
+# Gracz nie jest online
+player-not-online: '&cTen gracz nie jest online!'
 
-# Target not online
-player-not-online: "&cThat player is not online!"
+# Cel jest w innym świecie
+not-in-world: '&f{target} &cjest w innym świecie — nie można go śledzić!'
 
-# Target is in another world
-not-in-world: "&f{target} &cis in another world — cannot track them!"
+# Cel zmienił świat podczas śledzenia
+changed-world: '&cTwój cel zmienił świat — śledzenie zatrzymane!'
 
-# Target changed worlds while being tracked
-changed-world: "&cYour target changed worlds — tracking stopped!"
+# Użyto /track bez kompasu
+no-compass: '&cPotrzebujesz kompasu, aby użyć &f/track&c!'
 
-# Used /track without having a compass
-no-compass: "&cYou need a compass to use &f/track&c!"
+# Gracz stracił kompas podczas śledzenia
+tracking-stopped-no-compass: '&cBrak kompasu — śledzenie zatrzymane!'
 
-# Player lost their compass while tracking
-tracking-stopped-no-compass: "&cCompass missing — tracking stopped!"
+# Kompas musi być trzymany w ręce
+compass-not-in-hand: '&cMusisz trzymać kompas w ręce, aby śledzić!'
 
-# Compass must be held
-compass-not-in-hand: "&cYou must hold a compass to track!"
+# Gracz nikogo nie śledzi
+not-tracking-player: '&cAktualnie nikogo nie śledzisz.'
 
-# Player is not tracking anyone
-not-tracking-player: "&cYou are not currently tracking anyone."
+# Cel nie może być śledzony (bypass)
+tracker-bypass-message: '&cTego gracza nie można śledzić.'
 
-# Target cannot be tracked due to bypass permission
-tracker-bypass-message: "&cThis player cannot be tracked."
+# Śledzenie zatrzymane przez admina lub zdarzenie serwera
+forced-stop: '&cŚledzenie gracza &f{target} &czostało wymuszone i zatrzymane.'
 
-# Tracking stopped by admin or server event
-forced-stop: "&cTracking of &f{target} &chas been forcefully stopped."
+# Gracz sam zatrzymał śledzenie (/cleartarget)
+self-stop: '&aZatrzymałeś śledzenie swojego celu.'
 
-# Player stopped tracking themselves (/cleartarget)
-self-stop: "&aYou have stopped tracking your target."
-
-# Target logged out
-target-left: "&cStopped tracking &f{target}&c — they left the server."
+# Cel opuścił serwer
+target-left: '&cZatrzymano śledzenie &f{target}&c — opuścił serwer.'
