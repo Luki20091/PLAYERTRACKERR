@@ -24,6 +24,14 @@ public class CompassCraftListener implements Listener {
     @EventHandler
     public void onCraft(CraftItemEvent event) {
         try {
+            var human = event.getWhoClicked();
+            if (human instanceof org.bukkit.entity.Player p) {
+                if (!p.hasPermission("pt.craftcompass")) {
+                    p.sendMessage(config.format(dev.quacc.playertrackerr.config.ConfigOption.NO_PERMISSION));
+                    event.setCancelled(true);
+                    return;
+                }
+            }
             if (config.getBoolean(ConfigOption.COMPASS_STACKABLE)) return;
             ItemStack result = event.getInventory().getResult();
             if (result == null) return;

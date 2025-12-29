@@ -35,6 +35,7 @@ public final class PlayerTrackerr extends JavaPlugin {
         commandRegistration.registerCommands();
         getServer().getPluginManager().registerEvents(new CompassClickListener(trackingManager, configManager), this);
         getServer().getPluginManager().registerEvents(new dev.quacc.playertrackerr.items.CompassCraftListener(configManager), this);
+        getServer().getPluginManager().registerEvents(new dev.quacc.playertrackerr.items.AutoAssignListener(configManager), this);
         getServer().getPluginManager().registerEvents(new dev.quacc.playertrackerr.tracking.listener.TrackedItemListener(trackingManager), this);
         getServer().getPluginManager().registerEvents(new TrackingListener(trackingManager), this);
         getServer().getPluginManager().registerEvents(new AdminMenuClickListener(trackingManager, adminMenuHelper), this);

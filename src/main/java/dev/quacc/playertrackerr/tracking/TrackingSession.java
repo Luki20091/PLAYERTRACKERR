@@ -30,6 +30,8 @@ public class TrackingSession {
     // Distance caching to respect a separate distance update cooldown
     private long lastDistanceUpdate = 0L;
     private int cachedDistance = -1;
+    // timestamp of last durability consumption to avoid double-consume
+    private long lastConsumedTime = 0L;
 
     public TrackingSession(UUID trackerId, UUID targetId, ConfigOptionsManager config, String trackedItemId) {
         this.trackerId = trackerId;
@@ -40,7 +42,16 @@ public class TrackingSession {
     }
 
     public void setPaused(boolean value) {
+        boolean old = this.paused;
         this.paused = value;
+        try {
+            if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG) && old != value) {
+                var plugin = JavaPlugin.getPlugin(PlayerTrackerr.class);
+                var player = plugin.getServer().getPlayer(trackerId);
+                String name = player != null ? player.getName() : trackerId.toString();
+                plugin.getLogger().info("[PT Debug] Session for " + name + " paused=" + value);
+            }
+        } catch (Throwable ignored) {}
     }
 
     public boolean isPaused() {
@@ -85,6 +96,36 @@ public class TrackingSession {
     private boolean handleCompassState(Player tracker, Player target, JavaPlugin plugin) {
         if (this.isPaused()) return true; // pause: don't update but keep session alive
 
+        // If this session is tracking a specific item, but that item no longer
+        // exists in the player's inventory, stop the session rather than
+        // continuing with a different compass that won't consume durability.
+        if (this.trackedItemId != null) {
+            try {
+                boolean found = false;
+                NamespacedKey uniqueKey = new NamespacedKey(plugin, "pt_unique");
+                var inv = tracker.getInventory();
+                for (int i = 0; i < inv.getSize(); i++) {
+                    var it = inv.getItem(i);
+                    if (it == null) continue;
+                    var m = it.getItemMeta();
+                    if (m == null) continue;
+                    var pdc = m.getPersistentDataContainer();
+                    if (pdc.has(uniqueKey, PersistentDataType.STRING)) {
+                        var id = pdc.get(uniqueKey, PersistentDataType.STRING);
+                        if (this.trackedItemId.equals(id)) { found = true; break; }
+                    }
+                }
+                if (!found) {
+                    tracker.spigot().sendMessage(
+                            new ComponentBuilder(
+                                    config.format(dev.quacc.playertrackerr.config.ConfigOption.TRACKING_STOPPED_NO_COMPASS)
+                            ).create()
+                    );
+                    return false;
+                }
+            } catch (Throwable ignored) {}
+        }
+
         return switch (compassHelper.validate(tracker)) {
             case STOP -> {
                 tracker.spigot().sendMessage(
@@ -108,6 +149,7 @@ public class TrackingSession {
                 if (distanceUpdated) updateCachedDistance(tracker, target);
                 // If configured, consume durability when a search actually triggers
                 if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_CONSUME_DURABILITY) && (compassUpdated || distanceUpdated)) {
+                    try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] About to call consumeDurability (compassUpdated=" + compassUpdated + ",distanceUpdated=" + distanceUpdated + ") for " + tracker.getName()); } catch (Throwable ignored) {}
                     consumeDurability(tracker);
                 }
 
@@ -171,6 +213,7 @@ public class TrackingSession {
             updateHeldCompass(tracker, target.getLocation());
             // When we actually update the compass, send HUD immediately with 0 seconds remaining
             if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_CONSUME_DURABILITY)) {
+                try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] updateCompassIfAllowed: calling consumeDurability for " + tracker.getName()); } catch (Throwable ignored) {}
                 consumeDurability(tracker);
             }
             sendHUD(tracker, target, 0);
@@ -182,6 +225,9 @@ public class TrackingSession {
     // Used when we want to avoid overwriting a cooldown action-bar message.
     public void updateTargetOnly(Player tracker, Player target) {
         try {
+            if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) {
+                JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] updateTargetOnly for " + tracker.getName() + " -> " + target.getName());
+            }
             updateHeldCompass(tracker, target.getLocation());
         } catch (Throwable ignored) {}
     }
@@ -216,6 +262,9 @@ public class TrackingSession {
             }
 
             if (holding) {
+                if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) {
+                    JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] Updating compass target for " + tracker.getName() + " (trackedId=" + trackedItemId + ")");
+                }
                 tracker.setCompassTarget(targetLocation);
             }
         } catch (Throwable ignored) {}
@@ -223,63 +272,185 @@ public class TrackingSession {
 
     public void consumeDurability(Player tracker) {
         try {
-            final org.bukkit.inventory.ItemStack item = tracker.getInventory().getItemInMainHand();
-            if (item == null) return;
-            if (!config.isConfiguredCompass(item)) return;
-            // If a specific trackedItemId is set, ensure we only consume durability for that exact item
+            final var inv = tracker.getInventory();
+            int slot = -1;
+            org.bukkit.inventory.ItemStack item = null;
+
             if (trackedItemId != null) {
-                final var metaCheck = item.getItemMeta();
-                if (metaCheck == null) return;
-                var pdcCheck = metaCheck.getPersistentDataContainer();
-                var uniqueKey = new NamespacedKey(JavaPlugin.getPlugin(PlayerTrackerr.class), "pt_unique");
-                if (!pdcCheck.has(uniqueKey, PersistentDataType.STRING)) return;
-                var id = pdcCheck.get(uniqueKey, PersistentDataType.STRING);
-                if (!trackedItemId.equals(id)) return;
+                try {
+                    NamespacedKey uniqueKey = new NamespacedKey(JavaPlugin.getPlugin(PlayerTrackerr.class), "pt_unique");
+                    for (int i = 0; i < inv.getSize(); i++) {
+                        var it = inv.getItem(i);
+                        if (it == null) continue;
+                        var metaCheck = it.getItemMeta();
+                        if (metaCheck == null) continue;
+                        var pdcCheck = metaCheck.getPersistentDataContainer();
+                        if (pdcCheck.has(uniqueKey, PersistentDataType.STRING)) {
+                            var id = pdcCheck.get(uniqueKey, PersistentDataType.STRING);
+                            if (trackedItemId.equals(id)) { item = it; slot = i; break; }
+                        }
+                    }
+                } catch (Throwable ignored) {}
+            } else {
+                slot = inv.getHeldItemSlot();
+                item = inv.getItem(slot);
             }
-            final org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
-            if (!(meta instanceof org.bukkit.inventory.meta.Damageable)) return;
+
+            if (item == null) {
+                try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] consumeDurability: no item found for tracker " + tracker.getName()); } catch (Throwable ignored) {}
+                return;
+            }
+            if (!config.isConfiguredCompass(item)) {
+                try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] consumeDurability: item in slot " + slot + " is not recognised as configured compass for " + tracker.getName()); } catch (Throwable ignored) {}
+                return;
+            }
+
             // First, check for plugin-managed durability stored in PersistentDataContainer
             try {
+                final org.bukkit.inventory.meta.ItemMeta meta = item.getItemMeta();
                 JavaPlugin plugin = JavaPlugin.getPlugin(PlayerTrackerr.class);
                 NamespacedKey maxKey = new NamespacedKey(plugin, "pt_max_durability");
                 NamespacedKey curKey = new NamespacedKey(plugin, "pt_durability");
                 var pdc = meta.getPersistentDataContainer();
                 if (pdc.has(maxKey, PersistentDataType.INTEGER)) {
                     int max = pdc.get(maxKey, PersistentDataType.INTEGER);
-                    int cur = pdc.has(curKey, PersistentDataType.INTEGER) ? pdc.get(curKey, PersistentDataType.INTEGER) : 0;
-                    cur = cur + 1;
-                    if (cur >= max && item.getAmount() <= 1) {
-                        tracker.getInventory().setItemInMainHand(null);
-                    } else if (cur >= max) {
+                    int cur = pdc.has(curKey, PersistentDataType.INTEGER) ? pdc.get(curKey, PersistentDataType.INTEGER) : max;
+                    long now = System.currentTimeMillis();
+                    if (now - lastConsumedTime < 500L) return;
+                    cur = Math.max(0, cur - 1);
+                    lastConsumedTime = now;
+                    try {
+                        if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) {
+                            JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] consumeDurability plugin-managed for " + tracker.getName() + ": remaining=" + cur + " / max=" + max);
+                        }
+                    } catch (Throwable ignored) {}
+
+                    if (cur <= 0 && item.getAmount() <= 1) {
+                        if (slot >= 0) {
+                            inv.setItem(slot, null);
+                            try { tracker.playSound(tracker.getLocation(), org.bukkit.Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f); } catch (Throwable ignored) {}
+                        } else {
+                            // try to remove from main or off hand if still held
+                            var mainHand = inv.getItemInMainHand();
+                            var offHand = inv.getItemInOffHand();
+                            boolean removed = false;
+                            try {
+                                if (mainHand != null) {
+                                    var m = mainHand.getItemMeta();
+                                    if (m != null) {
+                                        var uk = new NamespacedKey(JavaPlugin.getPlugin(PlayerTrackerr.class), "pt_unique");
+                                        if (m.getPersistentDataContainer().has(uk, PersistentDataType.STRING)) {
+                                            var id = m.getPersistentDataContainer().get(uk, PersistentDataType.STRING);
+                                            if (trackedItemId != null && trackedItemId.equals(id)) {
+                                                inv.setItemInMainHand(null);
+                                                removed = true;
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (Throwable ignored) {}
+                            try {
+                                if (!removed && offHand != null) {
+                                    var m2 = offHand.getItemMeta();
+                                    if (m2 != null) {
+                                        var uk2 = new NamespacedKey(JavaPlugin.getPlugin(PlayerTrackerr.class), "pt_unique");
+                                        if (m2.getPersistentDataContainer().has(uk2, PersistentDataType.STRING)) {
+                                            var id2 = m2.getPersistentDataContainer().get(uk2, PersistentDataType.STRING);
+                                            if (trackedItemId != null && trackedItemId.equals(id2)) {
+                                                inv.setItemInOffHand(null);
+                                                removed = true;
+                                            }
+                                        }
+                                    }
+                                }
+                            } catch (Throwable ignored) {}
+                            if (!removed) {
+                                inv.removeItem(item);
+                            }
+                            try { tracker.playSound(tracker.getLocation(), org.bukkit.Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f); } catch (Throwable ignored) {}
+                        }
+                        try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] Removed tracked item from inventory for " + tracker.getName()); } catch (Throwable ignored) {}
+                        try { tracker.updateInventory(); } catch (Throwable ignored) {}
+                    } else if (cur <= 0) {
                         item.setAmount(item.getAmount() - 1);
                         if (item.getAmount() > 0) {
                             pdc.set(curKey, PersistentDataType.INTEGER, 0);
+                            // update lore to show reset durability
+                            try {
+                                java.util.List<String> loreList = meta.hasLore() ? new java.util.ArrayList<>(meta.getLore()) : new java.util.ArrayList<>();
+                                loreList.removeIf(s -> s != null && s.toLowerCase().contains("durability"));
+                                loreList.add(org.bukkit.ChatColor.translateAlternateColorCodes('&', "&7Durability: &a0&7/&f" + max));
+                                meta.setLore(loreList);
+                            } catch (Throwable ignored) {}
                             item.setItemMeta(meta);
+                            if (slot >= 0) inv.setItem(slot, item);
+                            try { tracker.updateInventory(); } catch (Throwable ignored) {}
+                            try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] Decremented tracked item stack for " + tracker.getName()); } catch (Throwable ignored) {}
                         }
                     } else {
                         pdc.set(curKey, PersistentDataType.INTEGER, cur);
+                        // update lore with current durability
+                        try {
+                            java.util.List<String> loreList = meta.hasLore() ? new java.util.ArrayList<>(meta.getLore()) : new java.util.ArrayList<>();
+                            loreList.removeIf(s -> s != null && s.toLowerCase().contains("durability"));
+                            loreList.add(org.bukkit.ChatColor.translateAlternateColorCodes('&', "&7Durability: &a" + cur + "&7/&f" + max));
+                            meta.setLore(loreList);
+                        } catch (Throwable ignored) {}
                         item.setItemMeta(meta);
+                        if (slot >= 0) inv.setItem(slot, item);
+                        try { tracker.updateInventory(); } catch (Throwable ignored) {}
+                        try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] Updated tracked item durability to " + cur + " for " + tracker.getName()); } catch (Throwable ignored) {}
                     }
                     return;
                 }
+                    else {
+                        try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] consumeDurability: plugin-managed keys not present on item in slot " + slot + " for " + tracker.getName()); } catch (Throwable ignored) {}
+                    }
             } catch (Throwable ignored) {}
 
             // Fallback: use Damageable meta when available (vanilla tools)
-            final org.bukkit.inventory.meta.Damageable dmg = (org.bukkit.inventory.meta.Damageable) meta;
+            final org.bukkit.inventory.meta.ItemMeta meta2 = item.getItemMeta();
+            if (!(meta2 instanceof org.bukkit.inventory.meta.Damageable)) {
+                try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] consumeDurability: item meta not Damageable (vanilla durability unavailable) for " + tracker.getName() + " on slot " + slot); } catch (Throwable ignored) {}
+                return;
+            }
+            final org.bukkit.inventory.meta.Damageable dmg = (org.bukkit.inventory.meta.Damageable) meta2;
             final int current = dmg.getDamage();
             int max = item.getType().getMaxDurability();
             final int next = current + 1;
             if (next >= max && item.getAmount() <= 1) {
-                tracker.getInventory().setItemInMainHand(null);
+                if (slot >= 0) inv.setItem(slot, null);
+                else {
+                    // attempt main/off hand removal
+                    var mainHand = inv.getItemInMainHand();
+                    var offHand = inv.getItemInOffHand();
+                    boolean removed = false;
+                    try {
+                        if (mainHand != null && mainHand.isSimilar(item)) { inv.setItemInMainHand(null); removed = true; }
+                    } catch (Throwable ignored) {}
+                    try {
+                        if (!removed && offHand != null && offHand.isSimilar(item)) { inv.setItemInOffHand(null); removed = true; }
+                    } catch (Throwable ignored) {}
+                    if (!removed) inv.removeItem(item);
+                }
+                try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] Removed item due to vanilla durability for " + tracker.getName()); } catch (Throwable ignored) {}
+                try { tracker.playSound(tracker.getLocation(), org.bukkit.Sound.ENTITY_ITEM_BREAK, 1.0f, 1.0f); } catch (Throwable ignored) {}
+                try { tracker.updateInventory(); } catch (Throwable ignored) {}
             } else if (next >= max) {
                 item.setAmount(item.getAmount() - 1);
                 if (item.getAmount() > 0) {
                     dmg.setDamage(0);
                     item.setItemMeta(dmg);
+                    if (slot >= 0) inv.setItem(slot, item);
+                    try { tracker.updateInventory(); } catch (Throwable ignored) {}
+                    try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] Decremented vanilla item stack for " + tracker.getName()); } catch (Throwable ignored) {}
                 }
             } else {
                 dmg.setDamage(next);
                 item.setItemMeta(dmg);
+                if (slot >= 0) inv.setItem(slot, item);
+                try { tracker.updateInventory(); } catch (Throwable ignored) {}
+                try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] Set vanilla damage to " + next + " for " + tracker.getName()); } catch (Throwable ignored) {}
             }
         } catch (Throwable ignored) {}
     }
@@ -292,7 +463,7 @@ public class TrackingSession {
 
             final int distance = this.cachedDistance >= 0 ? this.cachedDistance : (int) tracker.getLocation().distance(target.getLocation());
 
-            final String targetName = config.getBoolean(ConfigOption.TRACKING_SHOW_TARGET) ? target.getName() : "Hidden";
+            final String targetName = config.getBoolean(ConfigOption.TRACKING_SHOW_TARGET) ? target.getName() : "Ukryty";
             final Map<String, String> vars = Map.of(
                 "target", targetName,
                 "distance", String.valueOf(distance),
@@ -309,6 +480,7 @@ public class TrackingSession {
                 // Optionally consume durability when the HUD remaining seconds decreases
                 if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_CONSUME_ON_HUD_REFRESH)) {
                     if (secondsUntilUpdate != 0 && lastSentRemaining > 0 && secondsUntilUpdate < lastSentRemaining) {
+                        try { if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) JavaPlugin.getPlugin(PlayerTrackerr.class).getLogger().info("[PT Debug] sendHUD: HUD refresh will call consumeDurability for " + tracker.getName() + " (sec=" + secondsUntilUpdate + ", last=" + lastSentRemaining + ")"); } catch (Throwable ignored) {}
                         consumeDurability(tracker);
                     }
                 }

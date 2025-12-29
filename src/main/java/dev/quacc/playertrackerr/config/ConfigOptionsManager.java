@@ -27,17 +27,13 @@ public final class ConfigOptionsManager {
                 final org.bukkit.NamespacedKey markerKey = new org.bukkit.NamespacedKey(plugin, "pt_custom_compass");
                 if (pdc.has(markerKey, org.bukkit.persistence.PersistentDataType.INTEGER)) return true;
                 // Otherwise match by material + display name
-                final String configured = getString(ConfigOption.COMPASS_ITEM);
-                if (configured != null && !configured.isBlank()) {
-                    try {
-                        org.bukkit.Material m = org.bukkit.Material.valueOf(configured.toUpperCase());
-                        if (item.getType() == m) {
-                            String cfgName = plugin.getConfig().getString("compass.name", "");
-                            if (cfgName == null || cfgName.isBlank()) return true;
-                            String display = meta.hasDisplayName() ? meta.getDisplayName() : "";
-                            return display.equals(org.bukkit.ChatColor.translateAlternateColorCodes('&', cfgName));
-                        }
-                    } catch (IllegalArgumentException ignored) {}
+                // Match by configured item material (visual-material) and optional display name
+                org.bukkit.Material m = getMaterial(ConfigOption.COMPASS_ITEM_MATERIAL);
+                if (m != null && item.getType() == m) {
+                    String cfgName = plugin.getConfig().getString("compass.name", "");
+                    if (cfgName == null || cfgName.isBlank()) return true;
+                    String display = meta.hasDisplayName() ? meta.getDisplayName() : "";
+                    return display.equals(org.bukkit.ChatColor.translateAlternateColorCodes('&', cfgName));
                 }
             }
         } catch (Throwable ignored) {}

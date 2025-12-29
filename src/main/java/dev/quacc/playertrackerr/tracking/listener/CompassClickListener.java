@@ -121,6 +121,13 @@ public class CompassClickListener implements Listener {
 
         trackingManager.startTracking(tracker, nearest, trackedId);
 
+        if (config.getBoolean(dev.quacc.playertrackerr.config.ConfigOption.DEBUG)) {
+            try {
+                var plugin = org.bukkit.plugin.java.JavaPlugin.getPlugin(dev.quacc.playertrackerr.PlayerTrackerr.class);
+                plugin.getLogger().info("[PT Debug] startTracking by " + tracker.getName() + " target=" + nearest.getName() + " trackedId=" + trackedId);
+            } catch (Throwable ignored) {}
+        }
+
         // Immediately perform an update for this session so the right-click triggers
         // the compass update and consumes durability (if enabled) without risking
         // a double-consume from the scheduled task.

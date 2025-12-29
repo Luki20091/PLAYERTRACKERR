@@ -39,6 +39,36 @@ public class GiveCompassCommand extends PlayerTrackerCommand {
         } else {
             item.setAmount(Math.max(1, amount));
         }
+        // Ensure plugin-managed PDC keys are set (in case the item originated elsewhere)
+        try {
+            var meta = item.getItemMeta();
+            var plugin = getPlugin();
+            var pdc = meta.getPersistentDataContainer();
+            var maxKey = new org.bukkit.NamespacedKey(plugin, "pt_max_durability");
+            var curKey = new org.bukkit.NamespacedKey(plugin, "pt_durability");
+            var markerKey = new org.bukkit.NamespacedKey(plugin, "pt_custom_compass");
+            if (!pdc.has(markerKey, org.bukkit.persistence.PersistentDataType.INTEGER)) {
+                pdc.set(markerKey, org.bukkit.persistence.PersistentDataType.INTEGER, 1);
+            }
+            int max = getConfigManager().getInt(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_MAX_DURABILITY);
+            if (max > 0 && !pdc.has(maxKey, org.bukkit.persistence.PersistentDataType.INTEGER)) {
+                pdc.set(maxKey, org.bukkit.persistence.PersistentDataType.INTEGER, max);
+                // store remaining durability starting at max
+                pdc.set(curKey, org.bukkit.persistence.PersistentDataType.INTEGER, max);
+            }
+            // If stacking disabled, ensure a unique id exists
+            try {
+                if (!getConfigManager().getBoolean(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_STACKABLE)) {
+                    var uniqueKey = new org.bukkit.NamespacedKey(plugin, "pt_unique");
+                    if (!pdc.has(uniqueKey, org.bukkit.persistence.PersistentDataType.STRING)) {
+                        pdc.set(uniqueKey, org.bukkit.persistence.PersistentDataType.STRING, java.util.UUID.randomUUID().toString());
+                    }
+                }
+            } catch (Throwable ignored) {}
+
+            item.setItemMeta(meta);
+        } catch (Throwable ignored) {}
+
         target.getInventory().addItem(item);
 
         sender.sendMessage("Gave configured compass to " + target.getName());

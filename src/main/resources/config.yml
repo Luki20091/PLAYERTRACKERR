@@ -33,11 +33,11 @@ compass:
   require-compass-hand: true
   
   # Which item should be considered the "compass" for this plugin. must be compass - sory
-  item: "COMPASS"
-
-  # (Display name removed) The plugin matches the configured material only.
+  item: COMPASS
   
-  # Cooldown after clicking a compass (in seconds).
+  # (Display name removed) The plugin matches the configured material only.
+
+    # Cooldown after clicking a compass (in seconds).
   cooldown-seconds: 300
   
   # Sent when clicking the compass while on cooldown.
@@ -47,20 +47,21 @@ compass:
   # controls how often (in seconds) the compass target is updated.
   update-cooldown-enabled: true
   update-cooldown-seconds: 60
-
+  
   # If true, using the configured compass item will consume 1 durability (if the item
   # supports `Damageable` meta). When the item reaches max damage it will be
   # removed from the player's hand.
-  consume-durability: false
-
+  consume-durability: true
+  
   # If true, each time the HUD cooldown seconds decreases (action bar refresh)
   # the item will also consume 1 durability. Disable unless you intend this behavior.
   consume-on-hud-refresh: false
-
+  
   # Display settings for server-managed compass item
-  name: "&fStary Kompas: &aPiratów"
+  name: '&fStary Kompas: &aPiratów'
   lore:
-    - "&7Kliknij PPM, aby użyć."
+  - '&7Kliknij PPM, aby użyć.'
+  - '&7Kliknij LPM, aby wyłączyć.'
   # If true, plugin will register a crafting recipe for the custom compass
   recipe-enabled: true
   # Max durability when using plugin-managed durability (0 = disabled)
@@ -69,17 +70,17 @@ compass:
   # If enabled, set the enchant name (use Bukkit enum name, e.g. "VANISHING_CURSE", "DURABILITY")
   # and the level. Invalid enchant names will be ignored.
   enchant:
-    enabled: false
-    type: "VANISHING_CURSE"
+    enabled: true
+    type: VANISHING_CURSE
     level: 1
   # Recipe definition for the custom compass. Provide 3 strings for the crafting shape
   # and map characters to materials under `ingredients`.
   recipe:
     # Example shape: XEX / ECE / XEX
     shape:
-      - "XEX"
-      - "ECE"
-      - "XEX"
+    - XEX
+    - ECE
+    - XEX
     # Ingredients: map single characters used in the shape to material names
     # Example: E = EMERALD, C = COMPASS
     ingredients:
@@ -88,7 +89,7 @@ compass:
       X: AIR
     # Amount to produce when crafting (result amount)
     result-amount: 1
-
+  
   # Whether the plugin should allow stacking the compass. NOTE: Minecraft
   # enforces stack sizes per Material; `COMPASS` is normally unstackable
   # and cannot be changed via the Bukkit API. This flag only enables
@@ -121,7 +122,9 @@ tracking:
 # ==============================================================
 
 # Global plugin prefix
-plugin-prefix: '&x&F&1&4&1&4&1&lS&x&F&2&5&3&5&3&lt&x&F&4&6&5&6&5&lr&x&F&5&7&7&7&7&le&x&F&7&8&9&8&9&la&x&F&8&9&C&9&C&lm&x&F&9&A&E&A&E&lC&x&F&B&C&0&C&0&lr&x&F&C&D&2&D&2&la&x&F&E&E&4&E&4&lf&x&F&F&F&6&F&6&lt &8» '
+plugin-prefix: '&x&F&1&4&1&4&1&lS&x&F&2&5&3&5&3&lt&x&F&4&6&5&6&5&lr&x&F&5&7&7&7&7&le&x&F&7&8&9&8&9&la&x&F&8&9&C&9&C&lm&x&F&9&A&E&A&E&lC&x&F&B&C&0&C&0&lr&x&F&C&D&2&D&2&la&x&F&E&E&4&E&4&lf&x&F&F&F&6&F&6&lt&8» '
+# Debug logs (set to true to enable detailed plugin debug messages)
+debug: false
 # Brak graczy w pobliżu do śledzenia
 no-close-player: '&cNie znaleziono żadnych pobliskich graczy do śledzenia!'
 

@@ -3,6 +3,7 @@ C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\d
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\tracking\listener\TrackedItemListener.java
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\items\CompassCraftListener.java
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\tracking\StopReason.java
+C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\command\impl\FixCompassCommand.java
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\command\impl\ClearTargetCommand.java
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\config\ConfigOption.java
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\tracking\listener\TrackingListener.java
@@ -17,6 +18,7 @@ C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\d
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\tracking\helper\CooldownHelper.java
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\tracking\TrackTask.java
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\tracking\listener\AdminMenuClickListener.java
+C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\items\AutoAssignListener.java
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\tracking\helper\FeeHelper.java
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\PlayerTrackerr.java
 C:\Users\lukas\Downloads\PlayerTrackerr-main\PlayerTrackerr-main\src\main\java\dev\quacc\playertrackerr\command\impl\PlayersTrackingCommand.java

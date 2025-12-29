@@ -28,6 +28,11 @@ commands:
     aliases:
       - 'givecompass'
     permission: 'pt.givecompass'
+  ptfixcompass:
+    description: 'Assign pt_unique to existing compass items in inventories'
+    aliases:
+      - 'fixcompass'
+    permission: 'pt.fixcompass'
 
 permissions:
   pt.command.track:
@@ -39,6 +44,10 @@ permissions:
 
   pt.givecompass:
     description: 'Allows giving the configured plugin compass via /giveptcompass'
+    default: op
+
+  pt.craftcompass:
+    description: 'Allows crafting the configured plugin compass via the recipe'
     default: op
 
 

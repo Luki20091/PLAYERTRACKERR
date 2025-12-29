@@ -93,6 +93,10 @@ public class TrackedItemListener implements Listener {
 
         boolean exists = sessionItemStillExists(player, session);
         if (!exists) {
+            try {
+                var plugin = JavaPlugin.getPlugin(dev.quacc.playertrackerr.PlayerTrackerr.class);
+                if (plugin.getConfig().getBoolean("debug", false)) plugin.getLogger().info("[PT Debug] Tracked item missing for " + player.getName() + " - stopping session");
+            } catch (Throwable ignored) {}
             trackingManager.stopTracking(player, StopReason.SELF_STOP);
         }
     }
@@ -135,7 +139,12 @@ public class TrackedItemListener implements Listener {
                             holding = playerIsHoldingTrackedId(p, id);
                         }
 
-                        session.setPaused(!holding);
+                        boolean paused = !holding;
+                        session.setPaused(paused);
+                        try {
+                            var plugin = JavaPlugin.getPlugin(dev.quacc.playertrackerr.PlayerTrackerr.class);
+                            if (plugin.getConfig().getBoolean("debug", false)) plugin.getLogger().info("[PT Debug] Session for " + p.getName() + " setPaused=" + paused + " (holding=" + holding + ")");
+                        } catch (Throwable ignored) {}
                     } catch (Throwable ignored) {}
                 }
             }.runTaskLater(plugin, 2L);

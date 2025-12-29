@@ -18,7 +18,8 @@ import org.bukkit.enchantments.Enchantment;
 public final class CustomCompassFactory {
 
     public static ItemStack createCompass(JavaPlugin plugin, ConfigOptionsManager config) {
-        ItemStack item = new ItemStack(Material.COMPASS);
+        org.bukkit.Material mat = config.getMaterial(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_ITEM_MATERIAL);
+        ItemStack item = new ItemStack(mat != null ? mat : Material.COMPASS);
         ItemMeta meta = item.getItemMeta();
         if (meta == null) return item;
 
@@ -36,10 +37,18 @@ public final class CustomCompassFactory {
         NamespacedKey maxKey = new NamespacedKey(plugin, "pt_max_durability");
         NamespacedKey curKey = new NamespacedKey(plugin, "pt_durability");
         NamespacedKey markerKey = new NamespacedKey(plugin, "pt_custom_compass");
-        int max = plugin.getConfig().getInt("compass.max-durability", 0);
+        int max = config.getInt(dev.quacc.playertrackerr.config.ConfigOption.COMPASS_MAX_DURABILITY);
         if (max > 0) {
             pdc.set(maxKey, PersistentDataType.INTEGER, max);
-            pdc.set(curKey, PersistentDataType.INTEGER, 0);
+            // store remaining durability (start at max)
+            pdc.set(curKey, PersistentDataType.INTEGER, max);
+            try {
+                java.util.List<String> loreList = meta.hasLore() ? new java.util.ArrayList<>(meta.getLore()) : new java.util.ArrayList<>();
+                // remove any existing durability line
+                loreList.removeIf(s -> s != null && s.toLowerCase().contains("durability"));
+                loreList.add(org.bukkit.ChatColor.translateAlternateColorCodes('&', "&7Durability: &a" + max + "&7/&f" + max));
+                meta.setLore(loreList);
+            } catch (Throwable ignored) {}
         }
         // mark this item as the plugin's custom compass
         pdc.set(markerKey, PersistentDataType.INTEGER, 1);
