@@ -43,6 +43,7 @@ public enum ConfigOption {
     NOTIFY_TARGET("notify-target", Type.STRING, "&cWARNING: You are being tracked by &f{tracker}"),
     TRACK_SELF("track-self", Type.STRING, "&cYou cannot track yourself!"),
     NO_PERMISSION("no-permission", Type.STRING, "&cYou do not have permission to do that."),
+    CRAFT_NO_PERMISSION("message-no-craft-permission", Type.STRING, "&cNie masz uprawnień do skraftowania tego przedmiotu."),
     RELOADED_CONFIG_MESSAGE("reloaded-config-message", Type.STRING, "&aConfiguration reloaded successfully!"),
     TRACKING_MESSAGE("tracking-message", Type.STRING, "&aTracking &e{target} &7| Distance: &b{distance}m"),
     TRACKING_SHOW_TARGET("tracking.show-target", Type.BOOLEAN, true),

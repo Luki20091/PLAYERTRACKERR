@@ -146,6 +146,9 @@ track-self: '&cNie możesz śledzić samego siebie!'
 # Brak uprawnień
 no-permission: '&cNie masz uprawnień do wykonania tej akcji.'
 
+# Wiadomość wysyłana gdy gracz nie ma permisji do kraftowania pluginowego kompasu
+message-no-craft-permission: '&cNie masz uprawnień do skraftowania tego przedmiotu.'
+
 # Pomyślne przeładowanie konfiguracji
 reloaded-config-message: '&aKonfiguracja została pomyślnie przeładowana!'
 
